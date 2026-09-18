@@ -7,6 +7,19 @@ const email = `auth.${Date.now()}@example.com`;
 const password = 'super-secret-password';
 const name = 'Auth Test User';
 
+function cookieValues(setCookie: string[] = []) {
+  return setCookie.map((cookie) => cookie.split(';', 1)[0]);
+}
+
+function mergeCookies(...headers: string[][]) {
+  const values = new Map<string, string>();
+  for (const cookie of headers.flatMap(cookieValues)) {
+    const separator = cookie.indexOf('=');
+    if (separator > 0) values.set(cookie.slice(0, separator), cookie);
+  }
+  return [...values.values()].join('; ');
+}
+
 describe('auth lifecycle', () => {
   beforeEach(async () => {
     await prisma.session.deleteMany({});
@@ -40,33 +53,48 @@ describe('auth lifecycle', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.user.email).toBe(email);
-    expect(response.headers['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('access_token='), expect.stringContaining('refresh_token=')]));
+    expect(response.headers['set-cookie']).toEqual(expect.arrayContaining([
+      expect.stringContaining('access_token='),
+      expect.stringContaining('refresh_token=')
+    ]));
+  });
+
+  it('rejects a protected request without a matching CSRF token', async () => {
+    await request(app).post('/api/auth/register').send({ name, email, password }).expect(201);
+    const loginResponse = await request(app).post('/api/auth/login').send({ email, password }).expect(200);
+    const csrfResponse = await request(app).get('/api/auth/csrf').set('Cookie', loginResponse.headers['set-cookie']).expect(200);
+
+    await request(app)
+      .post('/api/auth/protected-check')
+      .set('Cookie', mergeCookies(loginResponse.headers['set-cookie'], csrfResponse.headers['set-cookie']))
+      .expect(403);
   });
 
   it('logs in, refreshes tokens, and verifies a protected route with CSRF', async () => {
     await request(app).post('/api/auth/register').send({ name, email, password }).expect(201);
 
     const loginResponse = await request(app).post('/api/auth/login').send({ email, password }).expect(200);
-    const cookies = loginResponse.headers['set-cookie'] ?? [];
-    const csrfResponse = await request(app).get('/api/auth/csrf').set('Cookie', cookies.join('; ')).expect(200);
-
-    const csrfToken = csrfResponse.body.csrfToken;
-    const csrfCookie = (csrfResponse.headers['set-cookie'] ?? []).find((cookie: string) => cookie.startsWith('csrf_token='));
-
-    expect(csrfToken).toEqual(expect.any(String));
-    expect(csrfCookie).toBeDefined();
+    const csrfResponse = await request(app).get('/api/auth/csrf').set('Cookie', loginResponse.headers['set-cookie']).expect(200);
+    const csrfToken = csrfResponse.body.csrfToken as string;
+    const cookies = mergeCookies(loginResponse.headers['set-cookie'], csrfResponse.headers['set-cookie']);
 
     const refreshResponse = await request(app)
       .post('/api/auth/refresh')
-      .set('Cookie', `${cookies.join('; ')}; ${csrfCookie}`)
+      .set('Cookie', cookies)
       .expect(200);
 
     expect(refreshResponse.body.success).toBe(true);
-    expect(refreshResponse.headers['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('access_token='), expect.stringContaining('refresh_token=')]));
+    expect(refreshResponse.headers['set-cookie']).toEqual(expect.arrayContaining([
+      expect.stringContaining('access_token='),
+      expect.stringContaining('refresh_token=')
+    ]));
 
     const protectedResponse = await request(app)
       .post('/api/auth/protected-check')
-      .set('Cookie', `${refreshResponse.headers['set-cookie']?.join('; ') ?? ''}`)
+      .set('Cookie', mergeCookies(
+        csrfResponse.headers['set-cookie'],
+        refreshResponse.headers['set-cookie']
+      ))
       .set('x-csrf-token', csrfToken)
       .expect(200);
 
@@ -77,7 +105,7 @@ describe('auth lifecycle', () => {
     await request(app).post('/api/auth/register').send({ name, email, password }).expect(201);
 
     const loginResponse = await request(app).post('/api/auth/login').send({ email, password }).expect(200);
-    const cookieHeader = loginResponse.headers['set-cookie']?.join('; ') ?? '';
+    const cookieHeader = loginResponse.headers['set-cookie'];
 
     await request(app)
       .post('/api/auth/logout')
