@@ -18,6 +18,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(express.static('public'));
 app.get('/', (_req, res) => res.sendFile('todo.html', { root: 'public' }));
+app.get('/weather', (_req, res) => res.sendFile('weather.html', { root: 'public' }));
 app.get('/api/health', (_req, res) => res.json({ success: true, status: 'ok' }));
 app.use('/api/clock', clockRoutes);
 app.use('/api/auth', authRateLimit, authRoutes);

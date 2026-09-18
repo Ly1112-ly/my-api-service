@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A clean weather dashboard powered by Open-Meteo">
+  <title>Skycast Weather</title>
+  <link rel="stylesheet" href="/weather.css">
+  <script src="/weather.js" defer></script>
+</head>
+<body>
+  <main class="weather-shell">
+    <header class="weather-header">
+      <div>
+        <p class="eyebrow">LIVE FORECAST</p>
+        <h1>Skycast</h1>
+        <p class="subtitle">Simple weather, wherever you are.</p>
+      </div>
+      <a class="back-link" href="/">Focus List →</a>
+    </header>
+
+    <section class="search-card" aria-label="Choose a location">
+      <form id="weather-form" class="search-form">
+        <label class="sr-only" for="location-input">City or location</label>
+        <input id="location-input" name="location" type="search" placeholder="Search a city..." value="London" autocomplete="off" required>
+        <button type="submit">Search</button>
+      </form>
+      <button id="use-location" class="location-button" type="button">◎ Use my location</button>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <section id="weather-content" hidden>
+      <article class="current-card">
+        <div>
+          <p id="place" class="place"></p>
+          <p id="local-time" class="local-time"></p>
+          <p id="condition" class="condition"></p>
+        </div>
+        <div class="temperature-wrap">
+          <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
+          <strong id="temperature" class="temperature"></strong>
+        </div>
+      </article>
+      <div id="details" class="details-grid"></div>
+      <section class="forecast-section" aria-labelledby="forecast-title">
+        <div class="section-heading"><h2 id="forecast-title">5-day forecast</h2><span>Powered by Open-Meteo</span></div>
+        <div id="forecast" class="forecast-grid"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
