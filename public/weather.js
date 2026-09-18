@@ -24,31 +24,67 @@ function formatDay(date) {
   return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(new Date(`${date}T12:00:00`));
 }
 
+function formatHour(value) {
+  const date = new Date(value);
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(date);
+}
+
 function render(data, place) {
   const current = data.current;
   const [condition, icon] = getWeather(current.weather_code);
-  document.querySelector('#place').textContent = `${place.name}, ${place.country}`;
+  document.querySelector('#place').textContent = `${place.name}, ${place.country || 'Local'}`;
   document.querySelector('#local-time').textContent = `Local time · ${current.time.replace('T', ' ')}`;
   document.querySelector('#condition').textContent = condition;
   document.querySelector('#weather-icon').textContent = icon;
   document.querySelector('#temperature').textContent = `${Math.round(current.temperature_2m)}°`;
+
   document.querySelector('#details').innerHTML = [
     ['Feels like', `${Math.round(current.apparent_temperature)}°`],
     ['Humidity', `${current.relative_humidity_2m}%`],
     ['Wind', `${Math.round(current.wind_speed_10m)} km/h`],
     ['Precipitation', `${current.precipitation} mm`]
   ].map(([label, value]) => `<div class="detail"><span>${label}</span><strong>${value}</strong></div>`).join('');
+
+  const hourly = data.hourly.time.slice(0, 24).map((time, index) => ({
+    time,
+    temperature: data.hourly.temperature_2m[index],
+    weatherCode: data.hourly.weather_code[index],
+    precipitation: data.hourly.precipitation[index]
+  }));
+
+  document.querySelector('#hourly-forecast').innerHTML = hourly.map((entry) => {
+    const [hourCondition, hourIcon] = getWeather(entry.weatherCode);
+    return `
+      <article class="hour-card">
+        <span class="hour-label">${formatHour(entry.time)}</span>
+        <span class="forecast-icon">${hourIcon}</span>
+        <strong>${Math.round(entry.temperature)}°</strong>
+        <small>${hourCondition}</small>
+        <small class="rain">Rain ${entry.precipitation.toFixed(1)} mm</small>
+      </article>
+    `;
+  }).join('');
+
   document.querySelector('#forecast').innerHTML = data.daily.time.map((date, index) => {
     const [dayCondition, dayIcon] = getWeather(data.daily.weather_code[index]);
     return `<article class="forecast-day"><strong>${index === 0 ? 'Today' : formatDay(date)}</strong><span class="forecast-icon">${dayIcon}</span><span class="forecast-condition">${dayCondition}</span><span><b>${Math.round(data.daily.temperature_2m_max[index])}°</b> <i>${Math.round(data.daily.temperature_2m_min[index])}°</i></span></article>`;
   }).join('');
+
   content.hidden = false;
 }
 
 async function loadWeather(latitude, longitude, place) {
   setStatus('Loading forecast…');
   try {
-    const params = new URLSearchParams({ latitude, longitude, current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m', daily: 'weather_code,temperature_2m_max,temperature_2m_min', timezone: 'auto', forecast_days: '5' });
+    const params = new URLSearchParams({
+      latitude,
+      longitude,
+      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m',
+      hourly: 'temperature_2m,precipitation,weather_code',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      timezone: 'auto',
+      forecast_days: '5'
+    });
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
     if (!response.ok) throw new Error('Weather service unavailable');
     render(await response.json(), place);
