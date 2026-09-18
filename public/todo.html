@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A simple local to-do list">
+  <title>Focus List</title>
+  <link rel="stylesheet" href="/todo.css">
+  <script src="/todo.js" defer></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">LOCAL • PRIVATE • SIMPLE</p>
+      <h1>Focus List</h1>
+      <p class="subtitle">Plan your day. Your tasks stay in this browser.</p>
+    </header>
+
+    <section class="todo-card" aria-labelledby="list-title">
+      <div class="toolbar">
+        <h2 id="list-title">Today</h2>
+        <span id="task-count" class="count">0 tasks</span>
+      </div>
+      <form id="todo-form" class="add-form">
+        <label class="sr-only" for="todo-input">Add a task</label>
+        <input id="todo-input" name="task" type="text" maxlength="160" placeholder="What needs to be done?" autocomplete="off" required>
+        <button type="submit">Add task</button>
+      </form>
+      <div class="filters" role="group" aria-label="Filter tasks">
+        <button class="filter active" data-filter="all" type="button">All</button>
+        <button class="filter" data-filter="active" type="button">Active</button>
+        <button class="filter" data-filter="completed" type="button">Completed</button>
+        <button id="clear-completed" class="clear-button" type="button">Clear completed</button>
+      </div>
+      <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
+      <p id="empty-state" class="empty-state">No tasks yet. Add one above to get started.</p>
+    </section>
+    <p class="storage-note">Stored locally on this device with browser localStorage.</p>
+  </main>
+</body>
+</html>
